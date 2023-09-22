@@ -16,12 +16,14 @@ go get github.com/Leila-Codes/events-io
 ```
 
 # Example Application
+
 ```go
 package main
 
 import (
 	"github.com/Leila-Codes/events-io/sink"
 	"github.com/Leila-Codes/events-io/source"
+	"github.com/Leila-Codes/events-io/source/deserialize"
 	"github.com/segmentio/kafka-go"
 	"time"
 )
@@ -37,17 +39,17 @@ func main() {
 			Brokers: []string{"localhost:9092"},
 			Topic:   "test-topic-1",
 			GroupID: "my-consumer-id"},
-		source.JsonDeserializer[MyJsonMessage])
-	
+		deserialize.Json[MyJsonMessage])
+
 	// TODO: Perform some transformations or processing on the data.
 
 	sink.KafkaDataSink[MyJsonMessage](
 		kafka.WriterConfig{
 			Brokers: []string{"localhost:9092"},
-			Topic: "my-output-topic"},
-                input,
-                sink.JsonSerializer[MyJsonMessage])
-        }
+			Topic:   "my-output-topic"},
+		input,
+		sink.JsonSerializer[MyJsonMessage])
+}
 }
 ```
 
