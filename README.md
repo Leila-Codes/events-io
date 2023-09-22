@@ -55,7 +55,8 @@ func main() {
 ## Data Input (DataSource)
 DataSource is a wrapper around a continuous data stream. E.g. Kafka topic
 Currently this package contains implementations for:
-- Apache Kafka Consumer (Using kafka-go client)
+- File Input (**Bounded**)
+- Apache Kafka Consumer (Uses kafka-go client) (**Boundless**)
 
 ## Data Output (DataSink)
 DataSinks are an output for of continuous data streams. E.g. Kafka Topic
