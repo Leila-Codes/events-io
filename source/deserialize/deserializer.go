@@ -1,6 +1,6 @@
 package deserialize
 
-type Deserializer[IN, OUT interface{}] func(IN) OUT
+type Deserializer[OUT interface{}] func([]byte) OUT
 
 func String(in []byte) string {
 	return string(in)

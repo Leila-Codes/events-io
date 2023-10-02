@@ -10,11 +10,31 @@ import (
 	"time"
 )
 
-func kafkaReader[OUT interface{}](config kafka.ReaderConfig, out chan OUT, deserializer deserialize.Deserializer[[]byte, OUT]) {
+var (
+	defaultConsumerConfig = kafka.ReaderConfig{
+		QueueCapacity:          1_000, // 1K messages
+		MinBytes:               1e3,   // 1KB
+		MaxBytes:               1e6,   // 1MB
+		ReadBatchTimeout:       5 * time.Second,
+		ReadLagInterval:        30 * time.Second,
+		CommitInterval:         time.Second,
+		PartitionWatchInterval: 30 * time.Second,
+		WatchPartitionChanges:  true,
+		ReadBackoffMin:         time.Second,
+		ReadBackoffMax:         time.Minute,
+		//Logger:                 nil,
+		//ErrorLogger:            nil,
+		//IsolationLevel:         0,
+		MaxAttempts:           5,
+		OffsetOutOfRangeError: true,
+	}
+)
+
+func kafkaReader[OUT interface{}](config kafka.ReaderConfig, out chan OUT, deserializer deserialize.Deserializer[OUT]) {
 	reader := kafka.NewReader(config)
 
 	for {
-		ctx, cleanup := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cleanup := context.WithTimeout(context.Background(), time.Minute)
 		m, err := reader.ReadMessage(ctx)
 		cleanup()
 		if err != nil {
@@ -25,7 +45,28 @@ func kafkaReader[OUT interface{}](config kafka.ReaderConfig, out chan OUT, deser
 	}
 }
 
-func KafkaDataSource[OUT interface{}](config kafka.ReaderConfig, deserializer deserialize.Deserializer[[]byte, OUT]) chan OUT {
+func NewKafkaDataSource[OUT interface{}](
+	bootstrapUrl []string,
+	topic,
+	consumerId string,
+	deserializer deserialize.Deserializer[OUT],
+) chan OUT {
+	out := make(chan OUT, 1_000)
+
+	config := defaultConsumerConfig
+	config.Brokers = bootstrapUrl
+	config.Topic = topic
+	config.GroupID = consumerId
+
+	go kafkaReader[OUT](
+		config,
+		out,
+		deserializer)
+
+	return out
+}
+
+func KafkaDataSource[OUT interface{}](config kafka.ReaderConfig, deserializer deserialize.Deserializer[OUT]) chan OUT {
 	out := make(chan OUT, 1_000)
 
 	go kafkaReader[OUT](config, out, deserializer)

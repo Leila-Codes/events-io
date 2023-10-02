@@ -1,0 +1,30 @@
+package source
+
+import "database/sql"
+
+type SqlConfig[OUT interface{}] struct {
+	Connection  *sql.DB
+	SelectQuery string
+	ValueGetter func(row *sql.Rows) OUT
+}
+
+func SqlDataSource[IN interface{}, COLS []interface{}](
+	config SqlConfig[IN],
+	input chan IN) chan COLS {
+
+	output := make(chan COLS)
+
+	stmt, err := config.Connection.Prepare(config.SelectQuery)
+	if err != nil {
+		panic(err)
+	}
+
+	rows, err := stmt.Query()
+	if err != nil {
+		panic(err)
+	}
+
+	for rows.Next() {
+		output <- config.ValueGetter(rows)
+	}
+}

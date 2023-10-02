@@ -2,19 +2,20 @@ package sink
 
 import (
 	"context"
+	"github.com/Leila-Codes/events-io/sink/serialize"
 	"github.com/segmentio/kafka-go"
 	"time"
 )
 
 func kafkaWriter[IN interface{}](
 	writer *kafka.Writer,
-	in chan IN,
-	serializer ValueSerializer[IN]) {
+	in <-chan IN,
+	serializer serialize.Serializer[IN]) {
 	for {
 		event := <-in
 
 		ctx, cleanup := context.WithTimeout(context.Background(), 10*time.Second)
-		err := writer.WriteMessages(ctx, serializer(event))
+		err := writer.WriteMessages(ctx, kafka.Message{Key: nil, Value: serializer(event)})
 		cleanup()
 		if err != nil {
 			panic(err)
@@ -22,26 +23,34 @@ func kafkaWriter[IN interface{}](
 	}
 }
 
-func KafkaDataSink[IN interface{}](
-	config kafka.WriterConfig,
-	in chan IN,
-	serializer ValueSerializer[IN]) {
+const (
+	defaultBackoffMin = time.Second
+	defaultBackoffMax = time.Minute
+)
+
+func NewKafkaDataSink[IN interface{}](
+	input <-chan IN,
+	brokerURLs []string,
+	topicName string,
+	serializer serialize.Serializer[IN],
+) {
+
 	writer := &kafka.Writer{
-		Addr:        kafka.TCP(config.Brokers...),
-		Topic:       config.Topic,
-		Balancer:    config.Balancer,
-		MaxAttempts: config.MaxAttempts,
-		//WriteBackoffMin:        0,
-		//WriteBackoffMax:        0,
-		BatchSize:              config.BatchSize,
-		BatchBytes:             int64(config.BatchBytes),
-		BatchTimeout:           config.BatchTimeout,
-		ReadTimeout:            config.ReadTimeout,
-		WriteTimeout:           config.WriteTimeout,
-		RequiredAcks:           kafka.RequiredAcks(config.RequiredAcks),
-		Async:                  true,
+		Addr:            kafka.TCP(brokerURLs...),
+		Topic:           topicName,
+		WriteBackoffMin: defaultBackoffMin,
+		WriteBackoffMax: defaultBackoffMax,
+		BatchSize:       cap(input),
+		BatchBytes:      1e6, // 1 MB
+		BatchTimeout:    10 * time.Second,
+		ReadTimeout:     10 * time.Second,
+		WriteTimeout:    10 * time.Second,
+		RequiredAcks:    kafka.RequireNone,
+		Async:           true,
+		//Logger:                 nil,
+		//ErrorLogger:            nil,
 		AllowAutoTopicCreation: false,
 	}
 
-	kafkaWriter[IN](writer, in, serializer)
+	kafkaWriter[IN](writer, input, serializer)
 }

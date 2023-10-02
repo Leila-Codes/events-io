@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-func fileReader[OUT interface{}](filePath string, deserializer deserialize.Deserializer[[]byte, OUT], output chan OUT) {
+func fileReader[OUT interface{}](filePath string, deserializer deserialize.Deserializer[OUT], output chan OUT) {
 	f, err := os.OpenFile(filePath, os.O_RDONLY, 0444)
 	if err != nil {
 		panic(err)
@@ -23,7 +23,7 @@ func fileReader[OUT interface{}](filePath string, deserializer deserialize.Deser
 
 func FileInput[OUT interface{}](
 	filePath string,
-	deserializer deserialize.Deserializer[[]byte, OUT]) chan OUT {
+	deserializer deserialize.Deserializer[OUT]) chan OUT {
 
 	output := make(chan OUT)
 
