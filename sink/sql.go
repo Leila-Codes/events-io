@@ -34,14 +34,14 @@ func sqlDataSinker[IN interface{}](
 	//Strip numerics
 	//valuesStmt = reNumericStrip.ReplaceAllString(valuesStmt, "")
 
-	batchTimeout := time.NewTicker(batchTimeoutDuration)
-
 	for {
 
 		var (
 			rows   int
 			values []interface{}
 		)
+
+		batchTimeout := time.NewTimer(batchTimeoutDuration)
 
 	BatchCollector:
 		for rows = 0; rows < batchSize; rows++ {
