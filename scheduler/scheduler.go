@@ -6,6 +6,7 @@ import "time"
 // Note: the returned channel MUST be closed if you want the scheduler to run again.
 type ScheduleFunc[OUT interface{}] func(start, end time.Time) chan OUT
 
+// scheduleRunner - internal async function used to actually execute the specified function and pipe it's output
 func scheduleRunner[OUT interface{}](duration time.Duration, job ScheduleFunc[OUT], out chan<- OUT) {
 	timer := time.NewTicker(duration)
 
@@ -24,6 +25,7 @@ func scheduleRunner[OUT interface{}](duration time.Duration, job ScheduleFunc[OU
 	}
 }
 
+// Schedule - Executes the specified function asynchronously - every duration amount of time.
 func Schedule[OUT interface{}](duration time.Duration, job ScheduleFunc[OUT]) chan OUT {
 	out := make(chan OUT)
 
