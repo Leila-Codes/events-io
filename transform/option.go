@@ -7,3 +7,9 @@ type Optional[T interface{}] struct {
 func (op Optional[T]) IsEmpty() bool {
 	return op.Value == nil
 }
+
+func Empty[T interface{}]() Optional[T] {
+    return Optional[T]{
+        Value: nil,
+    }
+}
