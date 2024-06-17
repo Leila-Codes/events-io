@@ -2,7 +2,7 @@ package transform
 
 type FilterFunc[IN interface{}] func(IN) bool
 
-func doFilter[IN interface{}(input <-chan IN, output chan<- IN, filter FilterFunc[IN]) {
+func doFilter[IN interface{}](input <-chan IN, output chan<- IN, filter FilterFunc[IN]) {
 	for event := range input {
 		if filter(event) {
 			output <- event
