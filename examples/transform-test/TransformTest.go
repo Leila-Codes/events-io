@@ -1,11 +1,9 @@
-package transform_test
+package main
 
 import (
-	"github.com/Leila-Codes/events-io/sink"
-	"github.com/Leila-Codes/events-io/sink/serialize"
-	"github.com/Leila-Codes/events-io/source"
-	"github.com/Leila-Codes/events-io/source/deserialize"
+	"github.com/Leila-Codes/events-io/plugins/kafka"
 	"github.com/Leila-Codes/events-io/transform"
+	kafka2 "github.com/segmentio/kafka-go"
 	"time"
 )
 
@@ -24,11 +22,10 @@ type ExampleJson struct {
 func main() {
 	// Begin asynchronous streaming of data from Kafka
 	// input chan ExampleJSON
-	input := source.NewKafkaDataSource[ExampleJson](
-		[]string{"localhost:9092"},
-		"test-topic-1",
-		"testy-reader-1",
-		deserialize.Json[ExampleJson], // Deserializer for data values
+	input := kafka.DataSource[ExampleJson](
+		kafka2.ReaderConfig{Brokers: []string{"localhost:9092"}, Topic: "test-topic-1", GroupID: "testy-reader-1"},
+		1_000,
+		kafka.JsonValueDeserializer[ExampleJson], // Deserializer for data values
 	)
 
 	categoryCounts := map[string]int64{}
@@ -48,10 +45,12 @@ func main() {
 			}
 		})
 
-	sink.NewKafkaDataSink[CategoryCount](
+	kafka.DataSink[CategoryCount](
 		middle,
-		[]string{"localhost:9092"},
-		"test-topic-2",
-		serialize.Json[CategoryCount],
+		&kafka2.Writer{
+			Addr:  kafka2.TCP("localhost:9092"),
+			Topic: "test-topic-2",
+		},
+		kafka.JsonValueSerializer[CategoryCount],
 	)
 }

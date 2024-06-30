@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/Leila-Codes/events-io/sink"
-	"github.com/Leila-Codes/events-io/sink/serialize"
+	"github.com/Leila-Codes/events-io/plugins/kafka"
+	kafka2 "github.com/segmentio/kafka-go"
 	"math/rand"
 	"time"
 )
@@ -27,11 +27,13 @@ func randString(length int) string {
 func main() {
 	test := make(chan ExampleJson, 100)
 
-	go sink.NewKafkaDataSink[ExampleJson](
+	go kafka.DataSink[ExampleJson](
 		test,
-		[]string{"localhost:9092"},
-		"test-topic-1",
-		serialize.Json[ExampleJson],
+		&kafka2.Writer{
+			Addr:  kafka2.TCP("localhost:9092"),
+			Topic: "test-stream-1",
+		},
+		kafka.JsonValueSerializer[ExampleJson],
 	)
 
 	// Generate some test messages

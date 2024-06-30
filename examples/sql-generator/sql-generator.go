@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/Leila-Codes/events-io/sink"
+	"github.com/Leila-Codes/events-io/plugins/sql_io"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -30,7 +30,7 @@ func main() {
 	}()
 
 	// configure a SqlDataSink to dump these events
-	sink.SqlDataSink(
+	sql_io.DataSink(
 		eventStream,
 		"postgres",
 		"postgres://postgres:postgres@localhost:5432/events_test?sslmode=disable",

@@ -1,4 +1,4 @@
-package sink
+package sql_io
 
 import (
 	"database/sql"
@@ -25,14 +25,6 @@ func sqlDataSinker[IN interface{}](
 	batchTimeoutDuration time.Duration,
 ) {
 	columnParams := strings.Split(reNumericStrip.ReplaceAllString(valuesStmt[1:len(valuesStmt)-1], ""), ",")
-	//var usesNumerics int
-	//if m, err := regexp.MatchString("\\d", valuesStmt); m && err != nil {
-	//
-	//} else if err != nil {
-	//	panic(err)
-	//}
-	//Strip numerics
-	//valuesStmt = reNumericStrip.ReplaceAllString(valuesStmt, "")
 
 	for {
 
@@ -104,7 +96,7 @@ const (
 	ErrInsertSyntax = "unrecognised or unsupported INSERT statement"
 )
 
-func SqlDataSink[IN interface{}](
+func DataSink[IN interface{}](
 	input <-chan IN,
 	driverName,
 	connString,

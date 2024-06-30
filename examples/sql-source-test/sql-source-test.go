@@ -3,7 +3,8 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"github.com/Leila-Codes/events-io/source"
+	"github.com/Leila-Codes/events-io/plugins/schedule"
+	"github.com/Leila-Codes/events-io/plugins/sql_io"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -16,12 +17,12 @@ type MyEvent struct {
 
 func main() {
 
-	events := source.SqlDataSource(
-		source.Schedule(30*time.Second),
+	events := sql_io.DataSource(
+		schedule.Source(30*time.Second),
 		"postgres",
 		"postgres://postgres:postgres@localhost:5432/events_test?sslmode=disable",
 		"SELECT \"username\", \"action\", \"message\", \"timestamp\" FROM my_events WHERE \"timestamp\" BETWEEN $1 AND $2",
-		func(tRange source.TimeRange) []interface{} {
+		func(tRange schedule.TimeRange) []interface{} {
 			return []interface{}{tRange.From, tRange.To}
 		},
 		func(row *sql.Rows) (MyEvent, error) {
@@ -35,6 +36,7 @@ func main() {
 
 			return event, err
 		},
+		1_000,
 	)
 
 	for {
