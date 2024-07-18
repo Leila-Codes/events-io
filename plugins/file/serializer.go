@@ -11,7 +11,7 @@ type LineSerializer[IN interface{}] func(IN) []byte
 
 func StringSerializer[IN interface{}](event IN) []byte {
 	buff := &bytes.Buffer{}
-	_, err := fmt.Fprintf(buff, "%s", event)
+	_, err := fmt.Fprintf(buff, "%v", event)
 	if err != nil {
 		log.Println("File String Serializer Error - Serializer Error: ", err)
 	}

@@ -34,6 +34,8 @@ func multiFileReader[OUT interface{}](
 	for _, filePath := range filePaths {
 		fileReader[OUT](deserializer, output, filePath)
 	}
+
+	close(output)
 }
 
 func DataSource[OUT interface{}](
