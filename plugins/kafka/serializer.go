@@ -1,21 +1,32 @@
 package kafka
 
 import (
-	"encoding/json"
 	"fmt"
+
 	"github.com/segmentio/kafka-go"
-	"log"
 )
 
-func StringValueSerializer[IN interface{}](event IN) kafka.Message {
-	return kafka.Message{Value: []byte(fmt.Sprintf("%s", event))}
+type Builder[IN interface{}] func(IN) kafka.Message
+
+func ToString[IN interface{}](input IN) kafka.Message {
+	return kafka.Message{
+		Value: []byte(fmt.Sprint(input)),
+	}
 }
 
-func JsonValueSerializer[IN interface{}](event IN) kafka.Message {
-	data, err := json.Marshal(event)
-	if err != nil {
-		log.Fatal("Kafka Sink Error - Serialize Exception: ", err)
+func ToByte(input []byte) kafka.Message {
+	return kafka.Message{
+		Value: input,
 	}
+}
 
-	return kafka.Message{Value: data}
+func ToKeyValue[IN interface{}](
+	input IN,
+	keyer func(IN) []byte,
+	valuer func(IN) []byte,
+) kafka.Message {
+	return kafka.Message{
+		Key:   keyer(input),
+		Value: valuer(input),
+	}
 }

@@ -6,23 +6,21 @@ import (
 	"os"
 )
 
-func fileEventWriter[IN interface{}](
-	input chan IN,
-	serializer LineSerializer[IN],
+func fileEventWriter(
+	input chan []byte,
 	w *bufio.Writer,
 ) {
 	for event := range input {
-		_, err := w.Write(serializer(event))
+		_, err := w.Write(event)
 		if err != nil {
 			log.Fatal("File Sink Error - Writer Error: ", err)
 		}
 	}
 }
 
-func DataSink[IN interface{}](
-	input chan IN,
+func DataSink(
+	input chan []byte,
 	filePath string,
-	serializer LineSerializer[IN],
 ) {
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -33,5 +31,5 @@ func DataSink[IN interface{}](
 
 	writer := bufio.NewWriter(file)
 
-	go fileEventWriter(input, serializer, writer)
+	go fileEventWriter(input, writer)
 }

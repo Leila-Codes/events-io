@@ -2,29 +2,31 @@ package kafka
 
 import (
 	"context"
-	"github.com/segmentio/kafka-go"
 	"log"
+
+	"github.com/segmentio/kafka-go"
 )
 
 func kafkaReader[OUT interface{}](
 	reader *kafka.Reader,
-	output chan OUT,
-	deserializer KafkaDeserializer[OUT],
+	output chan<- OUT,
+	transformer KafkaTransformer[OUT],
 ) {
 	for {
 		m, err := reader.ReadMessage(context.TODO())
+
 		if err != nil {
 			log.Printf("Error reading message: %v", err)
 		}
 
-		output <- deserializer(m)
+		output <- transformer(m)
 	}
 }
 
 func DataSource[OUT interface{}](
 	config kafka.ReaderConfig,
 	bufferSize uint64,
-	deserializer KafkaDeserializer[OUT],
+	transformer KafkaTransformer[OUT],
 ) chan OUT {
 
 	var (
@@ -32,7 +34,7 @@ func DataSource[OUT interface{}](
 		reader = kafka.NewReader(config)
 	)
 
-	go kafkaReader(reader, out, deserializer)
+	go kafkaReader(reader, out, transformer)
 
 	return out
 }

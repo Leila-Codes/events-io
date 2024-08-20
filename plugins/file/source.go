@@ -2,50 +2,61 @@ package file
 
 import (
 	"bufio"
-	"log"
 	"os"
 )
 
-func fileReader[OUT interface{}](
-	deserializer LineDeserializer[OUT],
-	output chan OUT,
-	filePath string,
-) {
-	file, err := os.Open(filePath)
+func newFileScanner(filePath string) (*fileScanner, error) {
+	f, err := os.OpenFile(filePath, os.O_RDONLY, 0444)
 	if err != nil {
-		log.Fatal("File Data Source - File Error: ", err)
-		return
+		return nil, err
 	}
 
-	defer file.Close()
+	return &fileScanner{
+		file:    f,
+		scanner: bufio.NewScanner(f),
+	}, nil
+}
 
-	scanner := bufio.NewScanner(file)
-
-	for scanner.Scan() {
-		output <- deserializer(scanner.Bytes())
+func fileFeeder(
+	feeder EventFeeder,
+	output chan []byte,
+) {
+	for feeder.Scan() {
+		output <- feeder.Bytes()
 	}
 }
 
-func multiFileReader[OUT interface{}](
-	deserializer LineDeserializer[OUT],
-	output chan OUT,
+func multiFileReader(
+	output chan []byte,
 	filePaths ...string,
 ) {
 	for _, filePath := range filePaths {
-		fileReader[OUT](deserializer, output, filePath)
+		feeder, err := newFileScanner(filePath)
+		if err != nil {
+			panic("MultiFileReader open error: " + err.Error())
+		}
+
+		fileFeeder(feeder, output)
+
+		err = feeder.Close()
+		if err != nil {
+			panic("MultiFileScanner failed to close file " + filePath)
+		}
 	}
 
 	close(output)
 }
 
-func DataSource[OUT interface{}](
-	deserializer LineDeserializer[OUT],
+// ScannerSource constructs a bufio.Scanner across each file passed in sequentially.
+// Each file is opened one-by-one and read line-by-line with each line fired as an event to the returned output channel
+// This channel is closed once all files have been read.
+func ScannerSource(
 	bufferSize uint64,
 	filePaths ...string,
-) chan OUT {
-	out := make(chan OUT, bufferSize)
+) chan []byte {
+	output := make(chan []byte, bufferSize)
 
-	go multiFileReader(deserializer, out, filePaths...)
+	go multiFileReader(output, filePaths...)
 
-	return out
+	return output
 }
