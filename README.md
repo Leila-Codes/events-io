@@ -2,62 +2,137 @@
 An event-streaming, functional abstraction for Golang.
 
 ## Inspiration
-As a very new user to the Apache Flink framework I find myself fascinated by its abstractions and stateless + stateful functional approach.
-It's a heavy inspiration for this library in Golang, using some of it's more basic principles, combined with Golang generics.
+Inspiration came from the Apache Flink framework and it's stateful+stateless functions approach to event-handling. Other elements such as AWS Lambda as well. This library attempts to provide a variety of simple functions to skeleton out your streaming application or microservice, supported heavily by Golang generics.
 
 # Installation
-Install the package:
+1. Install the main package:
 ```shell
 go get github.com/Leila-Codes/events-io
 ```
+2. Install any desired plugins, e.g. for kafka
+```shell
+go get github.com/Leila-Codes/events-io/plugins/kafka
+```
 
 # Examples
-Examples can be found under the `./examples` directory in this repository. Additionally you can pull these with go:
-    `go get github.com/Leila-Codes/events-io/examples`
+Examples can be found under the `./examples` directory in this repository.
 
-# Further Information
+# API Principles
 ## Data Input (DataSource)
-DataSource is a wrapper around a continuous (or bounded) data stream. E.g. Kafka topic, SQL table or one or more files.
-Currently this package and it's plugins provides functions for:
-- File Input
+A Data Source is a functio that returns a stream of input data. Streams can be boundless (i.e. kafka or SQL) or it can be bounded (e.g. a file)
+Below lists the currently maintained plugins and their function definition for you to use:
+- File Input 
+
+  💾 `github.com/Leila-Codes/events-io/plugins/file`
     ```go
-    file.DataSource(file.LineDeserializer, bufferSize uint64, filePaths... string)
+    file.ScannerSource(bufferSize uint64, filePaths... string)
     ```
-- Apache Kafka Consumer (Using segmentio/kafka-go client)
+- Apache Kafka Consumer (Wraps around `github.com/segmentio/kafka-go`) 
+  
+  💾 `github.com/Leila-Codes/events-io/plugins/kafka`
     ```go
-    kafka.DataSource(kafka.ReaderConfig, bufferSize uint64, kafka.KafkaDeserializer)
+    kafka.DataSource(
+      kafka2.ReaderConfig{}, 
+      bufferSize uint64, 
+      kafka.Reader, // e.g. kafka.RawMessages | kafka.ByteValue | kafka.StringValue
+    )
     ```
-- SQL Table (PostgreSQL only, using lib/pq client)
+- Socket (Client and server supported) connection (e.g. TCP or UDP)
+
+  💾 `github.com/Leila-Codes/events-io/plugins/socket`
+
+  - As Client
+    ```go
+    socket.ClientSource(
+      network string, // "tcp" or "udp"
+      host string, port int,
+      delim byte, // char to read until before returning as event on channel.
+      bufferSize uint64,
+    )
+    ```
+
+  - As Server
+    ```go
+    socket.ServerSource(
+      network string, // "tcp" or "udp"
+      host string, port int,
+      delim byte, // char to read until before returning as event on channel.
+      bufferSize uint64,
+    )
+    ```
+
+- SQL Table (supports PostgreSQL, MS-SQL or MySQL)
+  
+  💾 `github.com/Leila-Codes/events-io/plugins/sql_io`
     ```go
     sql_io.DataSource(
         input <-chan IN,
         driverName, connString string,
         selectStmt string,
-        setter SqlParamSetter[IN],
-        scanner SqlScanner[OUT],
+        setter SqlParamSetter[IN], // function recieving IN type and returning params.
+        scanner SqlScanner[OUT], // function that receives sql.Row and return a new OUT type.
         bufferSize uint64,
     )
     ```
 
 ## Data Output (DataSink)
-DataSinks are an output for of continuous (or bounded) data streams.
-Currently this package and it's plugins provides functions for:
-- Apache Kafka Producer (Using segmentio/kafka-go client) \
-  ```
-    kafka.DataSink(input chan, *kafka.Writer, kafka.MessageSerializer)
-  ```
+DataSinks are a synchronous (blocking) output, generally the destination of your data stream at the end.
+Below lists the currently maintained plugins and their function definition for you to use:
 - File Output 
+
+  💾 `github.com/Leila-Codes/events-io/plugins/file`
+  ```go
+    file.DataSink(
+      input chan []byte, // expects bytes, serialize with `transform/serializer` package.
+      filePath string,
+    )`
+
   ```
-    file.DataSink(input chan, filePath string)`
+- Apache Kafka Producer (Wraps around `github.com/segmentio/kafka-go` client) 
+
+  💾 `github.com/Leila-Codes/events-io/plugins/kafka`
+  ```go
+    kafka.DataSink(
+      input chan, // channel of events, usually either []byte or string
+      *kafka.Writer, // configured segmentio/kafka-go
+      kafka.Builder, // typically kafka.ToByte | kafka.ToKeyValue | kafka.ToString
+    )
   ```
-- SQL Table (PostgreSQL only, using lib/pq client) \
-  ```
+
+- Socket (Client and server supported) (E.g. TCP or UDP)
+
+  💾 `github.com/Leila-Codes/events-io/plugins/socket`
+  
+  - As Client
+    ```go
+    socket.ClientSink(
+      input chan []byte, // expects bytes, use transform.serializer package.
+      network string, // "tcp" or "udp"
+      host string, port int,
+    )
+    ```
+
+  - As Server \
+    *writes every single input message to every single client that connects.*
+    ```go
+    socket.ServerSink(
+      input chan []byte, // expects bytes, use transform.serializer package
+      network string, // "tcp" or "udp"
+      host string, port int,
+    )
+    ```
+
+- SQL Table (MySQL, PostgrSQL and MS-SQL supported)
+
+  💾 `github.com/Leila-Codes/events-io/plugins/sql_io`
+  ```go
   sql_io.DataSink(
       input chan, 
-      driverName, connString, insertStmt string,
-      valuer sql_io.SqlValuer[IN],
-      batchSize int,
-      batchTimeout time.Duration,
+      driverName, connString,
+      insertStmt string, // e.g. INSERT INTO MyTable (ID, Username, Email) VALUES (?1, ?2, ?3)
+      valuer sql_io.SqlValuer[IN], // function to convert IN type into list of sql.Driver values ([]interface{})
+      batchSize int, // max # rows in a single insert
+      batchTimeout time.Duration, // max time to wait for batchSize or else flush anyway
   )
   ```
 
@@ -82,7 +157,5 @@ These manipulations may include; filtering out certain events, grouping related 
  - **Merge** \
   `Merge[T](input... chan T) chan T` \
     Merging events from all channels into the output.
-
-    *Still Under development:*
  - **KeyBy** \
   `KeyBy[IN, KEY](input chan IN, KeyFunc[IN] KEY) chan KeyedEvent[IN, KEY]`
