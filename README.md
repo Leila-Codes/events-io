@@ -163,7 +163,7 @@ These manipulations may include; filtering out certain events, grouping related 
 # Serialization
 Most of the input/output plugins generally expect data to be received or sent as `[]byte`. A subsidiary to the `transform` package, provides `serializer` and `deserializer` packages. Implementations provided are listed below:
 - **Json** \
-  Json support is provided in both packages, to deserialize []byte to a struct of your choosing and re-serialier to []byte later.
+  Json support is provided in both packages, to deserialize []byte to a struct of your choosing and re-serializer to []byte later.
   ```go
   // events chan OUT
   events := deserializer.Json[OUT interface{}](input chan []byte)
@@ -172,7 +172,7 @@ Most of the input/output plugins generally expect data to be received or sent as
   output := serializer.Json(input chan any)
   ```
 - **Csv** \
-  Csv support is provided in both packages, to deserialize []byte to a struct of your choosing and re-serialier to []byte later.
+  Csv support is provided in both packages, to deserialize []byte to a struct of your choosing and re-serializer to []byte later.
   ```go
   // rows chan []string
   rows := deserializer.Csv(input chan []byte) 
@@ -182,7 +182,7 @@ Most of the input/output plugins generally expect data to be received or sent as
   ```
   
 - **Gob** \
-  Gob support is provided in both packages, to deserialize []byte to a struct of your choosing and re-serialier to []byte later.
+  Gob support is provided in both packages, to deserialize []byte to a struct of your choosing and re-serializer to []byte later.
   ```go
   // events chan []OUT
   events := deserializer.Gob[OUT interface{}](input chan []byte) 
