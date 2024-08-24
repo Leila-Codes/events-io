@@ -1,10 +1,13 @@
 package main
 
 import (
+	"time"
+
 	"github.com/Leila-Codes/events-io/plugins/kafka"
 	"github.com/Leila-Codes/events-io/transform"
+	"github.com/Leila-Codes/events-io/transform/deserializer"
+	"github.com/Leila-Codes/events-io/transform/serializer"
 	kafka2 "github.com/segmentio/kafka-go"
-	"time"
 )
 
 type CategoryCount struct {
@@ -20,16 +23,18 @@ type ExampleJson struct {
 }
 
 func main() {
-	// Begin asynchronous streaming of data from Kafka
-	// input chan ExampleJSON
-	input := kafka.DataSource[ExampleJson](
+	// Begin asynchronous streaming of raw event data from Kafka (message.Value []byte)
+	raw := kafka.DataSource(
 		kafka2.ReaderConfig{Brokers: []string{"localhost:9092"}, Topic: "test-topic-1", GroupID: "testy-reader-1"},
 		1_000,
-		kafka.JsonValueDeserializer[ExampleJson], // Deserializer for data values
+		kafka.ByteValue, // Deserializer for data values
 	)
 
-	categoryCounts := map[string]int64{}
+	// input chan ExampleJSON
+	input := deserializer.Json[ExampleJson](raw)
 
+	// convert single events into count events for a particular category.
+	categoryCounts := map[string]int64{}
 	middle := transform.Map[ExampleJson, CategoryCount](
 		input,
 		func(record ExampleJson) CategoryCount {
@@ -45,12 +50,15 @@ func main() {
 			}
 		})
 
-	kafka.DataSink[CategoryCount](
-		middle,
+	output := serializer.Json(middle)
+
+	// write count events back to another kafka topic.
+	kafka.DataSink(
+		output,
 		&kafka2.Writer{
 			Addr:  kafka2.TCP("localhost:9092"),
 			Topic: "test-topic-2",
 		},
-		kafka.JsonValueSerializer[CategoryCount],
+		kafka.ToByte,
 	)
 }

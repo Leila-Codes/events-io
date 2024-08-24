@@ -52,9 +52,9 @@ func ServerSink(
 	}
 
 	writer := &multiCastWriter{}
-	go writer.ListenAndServe(listener)
+	go writer.listenAndServe(listener)
 
 	for event := range input {
-		writer.Notify(event)
+		writer.notify(event)
 	}
 }

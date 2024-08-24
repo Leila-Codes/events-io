@@ -10,7 +10,7 @@ import (
 func TestScannerSource(t *testing.T) {
 	data := file.ScannerSource(
 		3,
-		"test_data/plaintext.test.txt",
+		"../../examples/file-example/test_data/plaintext.test.txt",
 	)
 
 	i := 0

@@ -1,10 +1,12 @@
 package main
 
 import (
+	"time"
+
 	"github.com/Leila-Codes/events-io/plugins/kafka"
 	"github.com/Leila-Codes/events-io/plugins/sql_io"
+	"github.com/Leila-Codes/events-io/transform/deserializer"
 	kafka2 "github.com/segmentio/kafka-go"
-	"time"
 
 	_ "github.com/lib/pq"
 )
@@ -18,17 +20,22 @@ type ExampleJson struct {
 
 func main() {
 
-	input := kafka.DataSource[ExampleJson](
+	// receive kafka events as bytes (message.Value)
+	raw := kafka.DataSource(
 		kafka2.ReaderConfig{
 			Topic:   "test-topic-1",
 			GroupID: "testy-test-1",
 			Brokers: []string{"localhost:9092"},
 		},
 		1_000,
-		kafka.JsonValueDeserializer[ExampleJson],
+		kafka.ByteValue,
 	)
 
-	sql_io.DataSink[ExampleJson](
+	// deserialize each event to ExampleJson struct.
+	input := deserializer.Json[ExampleJson](raw)
+
+	// write them as new rows into a postgresql database.
+	sql_io.DataSink(
 		// channel input of events
 		input,
 		// sql.DB driver name

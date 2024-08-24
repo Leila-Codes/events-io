@@ -11,14 +11,14 @@ type multiCastWriter struct {
 	writers   []*bufio.Writer
 }
 
-// Subscribe registers a new tcp connection to the writer instance and constructs a new bufio writer for writing to the socket.
-func (m *multiCastWriter) Subscribe(conn net.Conn) {
+// subscribe registers a new tcp connection to the writer instance and constructs a new bufio writer for writing to the socket.
+func (m *multiCastWriter) subscribe(conn net.Conn) {
 	m.listeners = append(m.listeners, conn)
 	m.writers = append(m.writers, bufio.NewWriter(conn))
 }
 
-// Notify "broadcasts" a given slice of bytes to all currently active sockets.
-func (m *multiCastWriter) Notify(event []byte) {
+// notify "broadcasts" a given slice of bytes to all currently active sockets.
+func (m *multiCastWriter) notify(event []byte) {
 	for _, writer := range m.writers {
 		_, err := writer.Write(event)
 		if err != nil {
@@ -29,13 +29,13 @@ func (m *multiCastWriter) Notify(event []byte) {
 
 // ListenAndServce beings listening for new socket connections from the given listener object.
 // When a connection is accepted, it is automatically subscribed to this multicast writer.
-func (m *multiCastWriter) ListenAndServe(listener net.Listener) {
+func (m *multiCastWriter) listenAndServe(listener net.Listener) {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			panic("socket server client connection failed: " + err.Error())
 		}
 
-		m.Subscribe(conn)
+		m.subscribe(conn)
 	}
 }
