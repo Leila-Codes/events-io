@@ -8,7 +8,7 @@ import (
 )
 
 func TestScannerSource(t *testing.T) {
-	data := file.ScannerSource(
+	data, _ := file.ScannerSource(
 		3,
 		"../../examples/file-example/test_data/plaintext.test.txt",
 	)

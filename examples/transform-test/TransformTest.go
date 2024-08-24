@@ -7,6 +7,7 @@ import (
 	"github.com/Leila-Codes/events-io/transform"
 	"github.com/Leila-Codes/events-io/transform/deserializer"
 	"github.com/Leila-Codes/events-io/transform/serializer"
+	"github.com/Leila-Codes/events-io/util"
 	kafka2 "github.com/segmentio/kafka-go"
 )
 
@@ -24,11 +25,13 @@ type ExampleJson struct {
 
 func main() {
 	// Begin asynchronous streaming of raw event data from Kafka (message.Value []byte)
-	raw := kafka.DataSource(
+	raw, err := kafka.DataSource(
 		kafka2.ReaderConfig{Brokers: []string{"localhost:9092"}, Topic: "test-topic-1", GroupID: "testy-reader-1"},
 		1_000,
 		kafka.ByteValue, // Deserializer for data values
 	)
+
+	go util.PanicHandler(err)
 
 	// input chan ExampleJSON
 	input := deserializer.Json[ExampleJson](raw)

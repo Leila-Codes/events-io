@@ -1,94 +1,70 @@
 package sql_io
 
 import (
-	"database/sql"
-	"fmt"
-	"regexp"
-	"strconv"
-	"strings"
 	"time"
+
+	"github.com/Leila-Codes/events-io/plugins/sql_io/batch"
 )
 
 type SqlValuer[IN interface{}] func(IN) []interface{}
 
-var (
-	reNumericStrip = regexp.MustCompile("\\d")
-)
-
 func sqlDataSinker[IN interface{}](
-	db *sql.DB,
-	insertStmt string,
-	valuesStmt string,
-	input <-chan IN,
-	valuer SqlValuer[IN],
-	batchSize int,
-	batchTimeoutDuration time.Duration,
-) {
-	columnParams := strings.Split(reNumericStrip.ReplaceAllString(valuesStmt[1:len(valuesStmt)-1], ""), ",")
+	input <-chan IN, // input channel of events
+	driverName string, // e.g. "mysql", "postgres"
+	connString string, // e.g. "(user:pass)@host:port/db"
+	sql string, // e.g. INSERT INTO MyTable (ID, Username, Password) VALUES (@ID, @Username, @Password)
+	valuer SqlValuer[IN], // function that translated your input event type to a list of sql column values
+	batchSize int, // max size of each batch
+	batchTimeoutDuration time.Duration, // timeout at which batches are flushed regardless of if max is reached
+) error {
+	db, err := getConnection(driverName, connString)
+	if err != nil {
+		return err
+	}
+
+	builder, err := batch.NewBuilderFromSQL(driverName, sql)
+	if err != nil {
+		return err
+	}
+
+	var (
+		batches      = make([]interface{}, 0)
+		batchTimeout = time.NewTimer(batchTimeoutDuration)
+	)
 
 	for {
+	BatchCollector:
+		for {
+			// Append this event for batch inserts
+			batches = append(batches, valuer(<-input)...)
 
-		var (
-			rows   int
-			values []interface{}
+			// check if we've reached batch size (or timeout has been exceeded)
+			select {
+			case <-batchTimeout.C: // batch timeout exceeded, flush all buffered
+				break BatchCollector
+			default:
+				// batch size has been reached
+				if len(batches) > batchSize {
+					break BatchCollector
+				}
+			}
+		}
+
+		// pause timer (if not already stopped)
+		batchTimeout.Stop()
+
+		// Generate SQL and execute on the DB.
+		_, err := db.Exec(
+			builder.SQL(len(batches)),
+			batches...,
 		)
 
-		batchTimeout := time.NewTimer(batchTimeoutDuration)
-
-	BatchCollector:
-		for rows = 0; rows < batchSize; rows++ {
-			select {
-			// if timeout has been reached, exit batch collection phase.
-			case _ = <-batchTimeout.C:
-				break BatchCollector
-			// otherwise, is more data available?
-			case data := <-input:
-				values = append(values, valuer(data)...)
-			}
-
-			time.Sleep(time.Millisecond)
+		// Return errors for handling
+		if err != nil {
+			return err
 		}
 
-		totalCols := 0
-
-		// Make sure, rows are available
-		if rows > 0 {
-
-			// Flush records to database
-			query := strings.Builder{}
-			query.WriteString(insertStmt)
-			query.WriteString(" VALUES ")
-			//query.WriteString(valuesStmt)
-
-			for r := 0; r < rows; r++ {
-				if r > 0 {
-					query.WriteRune(',')
-				}
-
-				query.WriteRune('(')
-
-				for c, col := range columnParams {
-					if c > 0 {
-						query.WriteRune(',')
-					}
-					totalCols++
-					query.WriteString(col + strconv.Itoa(totalCols))
-				}
-
-				query.WriteRune(')')
-			}
-
-			queryStr := query.String()
-
-			res, err := db.Exec(queryStr, values...)
-			if err != nil {
-				panic(err)
-			}
-
-			rowCount, _ := res.RowsAffected()
-			fmt.Println("inserted ", rowCount, "rows")
-		}
-
+		batchTimeout.Reset(batchTimeoutDuration)
 	}
 }
 
@@ -97,37 +73,17 @@ const (
 )
 
 func DataSink[IN interface{}](
-	input <-chan IN,
-	driverName,
-	connString,
-	insertStmt string,
+	input <-chan IN, // input channel of events
+	driverName, connString, // e.g. "mysql", "postgres"   e.g. "(user:pass)@host:port/db"
+	insertStmt string, // e.g. INSERT INTO MyTable (ID, Username, Password) VALUES (@ID, @Username, @Password)
 	valuer SqlValuer[IN],
-	batchSize int,
-	batchTimeout time.Duration,
+	batchSize int, // max # of rows to batch before inserting into DB
+	batchTimeout time.Duration, // max timeout before writing buffered data into
 ) {
-
-	// 1) Connect to database
-	db, err := sql.Open(driverName, connString)
-	if err != nil {
-		panic(err)
-	}
-
-	// 2) Partially parse the SQL insert statement (extract VALUES)
-
-	parts := strings.Split(insertStmt, " VALUES ")
-	if len(parts) != 2 {
-		panic(ErrInsertSyntax)
-	}
-
-	insertStmt = parts[0]
-	valuesStmt := parts[1]
-
-	// 3) Pass over to dataSinker routine.
-	sqlDataSinker[IN](
-		db,
-		insertStmt,
-		valuesStmt,
+	sqlDataSinker(
 		input,
+		driverName, connString,
+		insertStmt,
 		valuer,
 		batchSize,
 		batchTimeout,

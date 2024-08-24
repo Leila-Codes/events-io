@@ -2,7 +2,10 @@ package file
 
 import (
 	"bufio"
+	"io"
 	"os"
+
+	"github.com/Leila-Codes/events-io/util"
 )
 
 func newFileScanner(filePath string) (*fileScanner, error) {
@@ -19,28 +22,35 @@ func newFileScanner(filePath string) (*fileScanner, error) {
 
 func fileFeeder(
 	feeder EventFeeder,
-	output chan []byte,
+	output chan<- []byte,
+	errors chan<- error,
 ) {
-	for feeder.Scan() {
+	err := feeder.Err()
+	for feeder.Scan() && err != nil {
+		err = feeder.Err()
 		output <- feeder.Bytes()
+	}
+	if err != nil && err != io.EOF {
+		util.MustWriteError(err, errors)
 	}
 }
 
 func multiFileReader(
 	output chan []byte,
+	errors chan error,
 	filePaths ...string,
 ) {
 	for _, filePath := range filePaths {
 		feeder, err := newFileScanner(filePath)
 		if err != nil {
-			panic("MultiFileReader open error: " + err.Error())
+			util.MustWriteError(err, errors)
 		}
 
-		fileFeeder(feeder, output)
+		fileFeeder(feeder, output, errors)
 
 		err = feeder.Close()
 		if err != nil {
-			panic("MultiFileScanner failed to close file " + filePath)
+			util.MustWriteError(err, errors)
 		}
 	}
 
@@ -53,10 +63,13 @@ func multiFileReader(
 func ScannerSource(
 	bufferSize uint64,
 	filePaths ...string,
-) chan []byte {
-	output := make(chan []byte, bufferSize)
+) (chan []byte, chan error) {
+	var (
+		output = make(chan []byte, bufferSize)
+		errors = make(chan error)
+	)
 
-	go multiFileReader(output, filePaths...)
+	go multiFileReader(output, errors, filePaths...)
 
-	return output
+	return output, errors
 }

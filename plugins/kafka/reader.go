@@ -6,10 +6,10 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
-type KafkaTransformer[OUT interface{}] func(message kafka.Message) OUT
+type Reader[OUT interface{}] func(message kafka.Message) OUT
 
-func RawMessage(message kafka.Message) kafka.Message {
-	return message
+func RawMessage(m kafka.Message) kafka.Message {
+	return m
 }
 
 func ByteValue(m kafka.Message) []byte {

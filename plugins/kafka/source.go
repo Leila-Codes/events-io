@@ -2,21 +2,22 @@ package kafka
 
 import (
 	"context"
-	"log"
 
+	"github.com/Leila-Codes/events-io/util"
 	"github.com/segmentio/kafka-go"
 )
 
 func kafkaReader[OUT interface{}](
 	reader *kafka.Reader,
 	output chan<- OUT,
-	transformer KafkaTransformer[OUT],
+	errors chan<- error,
+	transformer Reader[OUT],
 ) {
 	for {
 		m, err := reader.ReadMessage(context.TODO())
 
 		if err != nil {
-			log.Printf("Error reading message: %v", err)
+			util.MustWriteError(err, errors)
 		}
 
 		output <- transformer(m)
@@ -26,15 +27,16 @@ func kafkaReader[OUT interface{}](
 func DataSource[OUT interface{}](
 	config kafka.ReaderConfig,
 	bufferSize uint64,
-	transformer KafkaTransformer[OUT],
-) chan OUT {
+	transformer Reader[OUT],
+) (chan OUT, chan error) {
 
 	var (
 		out    = make(chan OUT, bufferSize)
+		err    = make(chan error)
 		reader = kafka.NewReader(config)
 	)
 
-	go kafkaReader(reader, out, transformer)
+	go kafkaReader(reader, out, err, transformer)
 
-	return out
+	return out, err
 }

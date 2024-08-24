@@ -6,6 +6,7 @@ import (
 	"github.com/Leila-Codes/events-io/plugins/kafka"
 	"github.com/Leila-Codes/events-io/plugins/sql_io"
 	"github.com/Leila-Codes/events-io/transform/deserializer"
+	"github.com/Leila-Codes/events-io/util"
 	kafka2 "github.com/segmentio/kafka-go"
 
 	_ "github.com/lib/pq"
@@ -21,7 +22,7 @@ type ExampleJson struct {
 func main() {
 
 	// receive kafka events as bytes (message.Value)
-	raw := kafka.DataSource(
+	raw, err := kafka.DataSource(
 		kafka2.ReaderConfig{
 			Topic:   "test-topic-1",
 			GroupID: "testy-test-1",
@@ -30,6 +31,8 @@ func main() {
 		1_000,
 		kafka.ByteValue,
 	)
+
+	go util.PanicHandler(err)
 
 	// deserialize each event to ExampleJson struct.
 	input := deserializer.Json[ExampleJson](raw)

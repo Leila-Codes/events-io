@@ -9,6 +9,7 @@ type EventFeeder interface {
 	Scan() bool
 	Bytes() []byte
 	Close() error
+	Err() error
 }
 
 type fileScanner struct {
@@ -26,4 +27,8 @@ func (f *fileScanner) Bytes() []byte {
 
 func (f *fileScanner) Close() error {
 	return f.file.Close()
+}
+
+func (f *fileScanner) Err() error {
+	return f.scanner.Err()
 }

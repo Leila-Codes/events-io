@@ -3,9 +3,11 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"time"
+
 	"github.com/Leila-Codes/events-io/plugins/schedule"
 	"github.com/Leila-Codes/events-io/plugins/sql_io"
-	"time"
+	"github.com/Leila-Codes/events-io/util"
 
 	_ "github.com/lib/pq"
 )
@@ -16,8 +18,7 @@ type MyEvent struct {
 }
 
 func main() {
-
-	events := sql_io.DataSource(
+	events, err := sql_io.DataSource(
 		schedule.Source(30*time.Second),
 		"postgres",
 		"postgres://postgres:postgres@localhost:5432/events_test?sslmode=disable",
@@ -38,6 +39,8 @@ func main() {
 		},
 		1_000,
 	)
+
+	go util.PanicHandler(err)
 
 	for {
 		fmt.Printf("%+v\n", <-events)

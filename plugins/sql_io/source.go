@@ -2,7 +2,8 @@ package sql_io
 
 import (
 	"database/sql"
-	"log"
+
+	"github.com/Leila-Codes/events-io/util"
 )
 
 type SqlParamSetter[IN interface{}] func(IN) []interface{}
@@ -14,17 +15,18 @@ func sqlSourceExecutor[IN, OUT interface{}](
 	setter SqlParamSetter[IN],
 	scanner SqlScanner[OUT],
 	output chan OUT,
+	errors chan error,
 ) {
 	for event := range input {
 		rows, err := stmt.Query(setter(event))
 		if err != nil {
-			log.Fatal("Sql Data Source Execution Error: ", err)
+			util.MustWriteError(err, errors)
 		}
 
 		for rows.Next() {
 			row, err := scanner(rows)
 			if err != nil {
-				log.Fatal("Sql Data Source Scanner Error: ", err)
+				util.MustWriteError(err, errors)
 			}
 
 			output <- row
@@ -39,22 +41,25 @@ func DataSource[IN, OUT interface{}](
 	setter SqlParamSetter[IN],
 	scanner SqlScanner[OUT],
 	bufferSize uint64,
-) chan OUT {
-	out := make(chan OUT, bufferSize)
+) (chan OUT, chan error) {
+	var (
+		out    = make(chan OUT, bufferSize)
+		errors = make(chan error)
+	)
 
 	db, err := getConnection(driverName, connString)
 	if err != nil {
-		log.Fatal("Sql Data Source Connection Error: ", err)
+		util.MustWriteError(err, errors)
 	}
 
 	stmt, err := db.Prepare(selectStmt)
 	if err != nil {
-		log.Fatal("Sql Data Source Statement Error: ", err)
+		util.MustWriteError(err, errors)
 	}
 
-	go sqlSourceExecutor(input, stmt, setter, scanner, out)
+	go sqlSourceExecutor(input, stmt, setter, scanner, out, errors)
 
-	return out
+	return out, errors
 }
 
 func NoParams[IN interface{}](IN) []interface{} {

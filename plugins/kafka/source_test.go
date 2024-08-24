@@ -32,19 +32,19 @@ func TestKafkaDataSource(t *testing.T) {
 		StartOffset: kafka2.FirstOffset,
 	}
 
-	messages := kafka.DataSource(
+	messages, _ := kafka.DataSource(
 		readerConfig,
 		10,
 		kafka.RawMessage,
 	)
 
-	events := kafka.DataSource(
+	events, _ := kafka.DataSource(
 		readerConfig,
 		10,
 		kafka.ByteValue,
 	)
 
-	timestamps := kafka.DataSource(
+	timestamps, _ := kafka.DataSource(
 		readerConfig,
 		10,
 		kafka.TimestampsOnly,
