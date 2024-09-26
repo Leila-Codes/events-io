@@ -22,7 +22,7 @@ func DataSink(
 	input chan []byte,
 	filePath string,
 ) {
-	file, err := os.Open(filePath)
+	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_TRUNC, 0633)
 	if err != nil {
 		log.Fatal("File Sink Error - File Error: ", err)
 	}
@@ -30,6 +30,7 @@ func DataSink(
 	defer file.Close()
 
 	writer := bufio.NewWriter(file)
+	defer writer.Flush()
 
-	go fileEventWriter(input, writer)
+	fileEventWriter(input, writer)
 }
