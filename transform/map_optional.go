@@ -12,6 +12,7 @@ func mapTransformerOpt[IN, OUT interface{}](
 			output <- *v.Value
 		}
 	}
+	close(output)
 }
 
 // MapOptional - Stateless function, similar to Map but may not always output
