@@ -7,8 +7,8 @@ func mapTransformer[IN, OUT interface{}](
 	transform MapFunction[IN, OUT],
 	output chan OUT,
 ) {
-	for {
-		output <- transform(<-input)
+	for event := range input {
+		output <- transform(event)
 	}
 	close(output)
 }
