@@ -8,6 +8,7 @@ func doFilter[IN interface{}](input <-chan IN, output chan<- IN, filter FilterFu
 			output <- event
 		}
 	}
+	close(output)
 }
 
 // Filter - Applies the given filter to each event received from input.
