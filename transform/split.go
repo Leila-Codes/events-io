@@ -47,7 +47,7 @@ func splitter[T interface{}](
 		}
 	}
 
-	for out := range outputs {
+	for _, out := range outputs {
 		close(out)
 	}
 }
