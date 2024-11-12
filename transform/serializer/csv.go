@@ -15,6 +15,7 @@ func csvSerializer(input []string) []byte {
 	if err != nil {
 		panic("CSV serializer error: " + err.Error())
 	}
+	writer.Flush()
 
 	return buff.Bytes()
 }
