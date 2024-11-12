@@ -46,6 +46,10 @@ func splitter[T interface{}](
 			log.Fatal("Split Transform Error - Index Out of Range")
 		}
 	}
+
+	for out := range outputs {
+		close(out)
+	}
 }
 
 func Split[T interface{}](
