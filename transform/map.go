@@ -10,6 +10,7 @@ func mapTransformer[IN, OUT interface{}](
 	for {
 		output <- transform(<-input)
 	}
+	close(output)
 }
 
 // Map - Stateless function, calls mapper to transform data from IN type to OUT type.
